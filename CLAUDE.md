@@ -17,3 +17,6 @@ uv run python compact_transcripts.py --execute         # compact (~50% reduction
   (Claude Code stores `/private/tmp` sessions there), so it covers all sessions automatically.
 - Disk cleanup sequence: `disk_report` → prune caches → `cleanup_snapshots` → `compact_transcripts`
 - After `uv cache prune`, run `cleanup_snapshots.sh` to see reclaim reflected in `df`
+- CoreSimulator cleanup: `xcrun simctl runtime list` to see installed runtimes (can be 8 GB each);
+  `xcrun simctl runtime delete <UUID>` to remove one. `xcrun simctl delete unavailable` only removes
+  device instances, NOT runtimes — it will silently succeed without freeing space.
