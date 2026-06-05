@@ -20,3 +20,5 @@ uv run python compact_transcripts.py --execute         # compact (~50% reduction
 - CoreSimulator cleanup: `xcrun simctl runtime list` to see installed runtimes (can be 8 GB each);
   `xcrun simctl runtime delete <UUID>` to remove one. `xcrun simctl delete unavailable` only removes
   device instances, NOT runtimes — it will silently succeed without freeing space.
+- `~/Documents/GitHub/` investigation: `du -sh ~/Documents/GitHub/*/` when total is large; `portfolio/data/snapshots/` accumulates ~960 MB weekly snapshots and is safe to prune
+- Transcript compaction has diminishing returns after the first run (~628 MB vs ~9 GB); skip if run recently
