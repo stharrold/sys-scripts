@@ -23,6 +23,7 @@ Present a table of targets with actual sizes from the report. Only include targe
 | 4 | Stale `.venv` dirs | `rm -rf <path>` | Confirm project is inactive before deleting |
 | 5 | Xcode DerivedData | `rm -rf ~/Library/Developer/Xcode/DerivedData` | Xcode rebuilds on demand |
 | 6 | Claude transcripts | `uv run python compact_transcripts.py --execute` | Run from sys-scripts dir; ~50% reduction typical |
+| 7 | Google Chrome (if large) | Chrome → Settings → Privacy → Clear Browsing Data | Check size: `du -sh ~/Library/Application\ Support/Google/Chrome`; File System API storage (per-site) is the non-obvious large entry — use Chrome UI or investigate with user approval |
 
 Ask which targets to proceed with before executing anything destructive.
 
