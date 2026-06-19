@@ -7,8 +7,9 @@ Policy (per project directory under ~/.claude/projects/):
   - Skip files modified within the last hour (active sessions).
   - Skip files smaller than 100 KB (no meaningful savings).
   - Level A (>= MIN_ASSISTANT_TO_COMPACT assistant turns):
-      keep human_user lines + first KEEP_FIRST_ASSISTANT + last KEEP_LAST_ASSISTANT
-      assistant turns; drop everything else.
+      keep human_user lines + first 1 + last 1 assistant turn (skeleton policy:
+      initial plan + final outcome); drop everything else. Git covers what changed;
+      transcripts answer why and what was discussed.
   - Level B (< MIN_ASSISTANT_TO_COMPACT assistant turns):
       keep all human_user + all assistant lines; drop progress and tool_result lines.
 
@@ -25,8 +26,8 @@ from pathlib import Path
 TINY_THRESHOLD_BYTES = 100_000
 RECENT_THRESHOLD_SECONDS = 3600
 KEEP_NEWEST_PER_PROJECT = 2
-KEEP_FIRST_ASSISTANT = 5
-KEEP_LAST_ASSISTANT = 5
+KEEP_FIRST_ASSISTANT = 1
+KEEP_LAST_ASSISTANT = 1
 MIN_ASSISTANT_TO_COMPACT = 11
 
 
