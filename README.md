@@ -46,6 +46,20 @@ APFS copy-on-write pins deleted bytes in snapshots — deletions don't reflect i
 bash cleanup_snapshots.sh
 ```
 
+---
+
+### `eject_disk_images.sh`
+Force-detach attached disk images (stale `.dmg` mounts, leftover iOS Simulator
+runtime/volume images) with `hdiutil detach -force`. SIP-protected system
+cryptexes (Metal toolchain, `/System/Cryptexes`) are detected and skipped —
+they're held by `cryptexd`, return "Resource busy", and reattach on demand.
+Dry-run by default.
+
+```bash
+bash eject_disk_images.sh              # preview (dry-run)
+bash eject_disk_images.sh --execute    # detach
+```
+
 ## Background: APFS snapshot pinning
 
 On macOS, `df` free space does not immediately reflect deletions because local Time Machine snapshots pin the blocks (APFS is copy-on-write). After bulk deletions, run `cleanup_snapshots.sh` to realize the reclaim. `com.apple.os.update-*` snapshots are system-owned and must not be deleted.
