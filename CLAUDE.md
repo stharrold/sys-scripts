@@ -10,7 +10,7 @@ bash cleanup_snapshots.sh                              # realize APFS reclaim af
 bash eject_disk_images.sh                              # preview detachable disk images (dry-run)
 bash eject_disk_images.sh --execute                    # force-detach stale images, skip cryptexes
 uv run python compact_transcripts.py --dry-run         # preview transcript compaction
-uv run python compact_transcripts.py --execute         # compact (~50% reduction typical)
+uv run python compact_transcripts.py --execute         # compact + archive to Google Drive (local copy removed); --no-archive to skip move
 ```
 
 ## Notes
@@ -29,3 +29,5 @@ uv run python compact_transcripts.py --execute         # compact (~50% reduction
   device instances, NOT runtimes — it will silently succeed without freeing space.
 - `~/Documents/GitHub/` investigation: `du -sh ~/Documents/GitHub/*/` when total is large; `portfolio/data/snapshots/` accumulates ~960 MB weekly snapshots and is safe to prune
 - Transcript compaction has diminishing returns after the first run (~628 MB vs ~9 GB); skip if run recently
+- `compact_transcripts.py --execute` moves compacted files to `~/Library/CloudStorage/GoogleDrive-.../My Drive/My_Drive/Data/Claude`; Drive must be mounted or use `--no-archive`
+- uv cache can grow 50+ GB in days of heavy dev work; prune weekly with `uv cache prune`
