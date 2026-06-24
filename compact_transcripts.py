@@ -182,7 +182,11 @@ def main() -> None:
     total_before = total_after = files_processed = files_skipped = files_archived = 0
 
     for project, files in sorted(groups.items()):
-        files_sorted = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
+        files_sorted = sorted(
+            (p for p in files if p.exists()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
         for i, p in enumerate(files_sorted):
             if i < KEEP_NEWEST_PER_PROJECT:
                 files_skipped += 1
