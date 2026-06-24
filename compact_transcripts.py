@@ -13,12 +13,16 @@ Policy (per project directory under ~/.claude/projects/):
   - Level B (< MIN_ASSISTANT_TO_COMPACT assistant turns):
       keep all human_user + all assistant lines; drop progress and tool_result lines.
 
+After compaction (--execute), each thinned file is moved to ARCHIVE_BASE,
+preserving the project subdirectory structure, and the local copy is removed.
+Pass --no-archive to skip the move (e.g. if Drive is not mounted).
+
 Atomic safety: rename original to .bak BEFORE writing, delete .bak after success.
 """
 
 import argparse
 import json
-import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -29,6 +33,7 @@ KEEP_NEWEST_PER_PROJECT = 2
 KEEP_FIRST_ASSISTANT = 1
 KEEP_LAST_ASSISTANT = 1
 MIN_ASSISTANT_TO_COMPACT = 11
+ARCHIVE_BASE = Path("/Users/stharrold/Library/CloudStorage/GoogleDrive-samuel.harrold@gmail.com/My Drive/My_Drive/Data/Claude")
 
 
 def classify_line(record: dict) -> str:
@@ -115,7 +120,15 @@ def should_skip(p: Path, now: float) -> str | None:
     return None
 
 
-def process_file(p: Path, dry_run: bool) -> tuple[int, int] | None:
+def archive_file(p: Path, base: Path, archive_base: Path) -> Path:
+    """Move compacted file to archive_base, preserving path relative to base."""
+    dest = archive_base / p.relative_to(base)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(p), str(dest))
+    return dest
+
+
+def process_file(p: Path, dry_run: bool, archive_base: Path | None, base: Path) -> tuple[int, int] | None:
     lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
     compacted = compact_lines(lines)
     if compacted is None:
@@ -123,6 +136,9 @@ def process_file(p: Path, dry_run: bool) -> tuple[int, int] | None:
     before = p.stat().st_size
     if dry_run:
         after_est = sum(len(l) + 1 for l in compacted)
+        if archive_base:
+            dest = archive_base / p.relative_to(base)
+            print(f"    → would archive to {dest}")
         return before, after_est
     bak = p.with_suffix(".jsonl.bak")
     p.rename(bak)
@@ -130,6 +146,8 @@ def process_file(p: Path, dry_run: bool) -> tuple[int, int] | None:
         p.write_text("\n".join(compacted) + "\n", encoding="utf-8")
         after = p.stat().st_size
         bak.unlink()
+        if archive_base:
+            archive_file(p, base, archive_base)
         return before, after
     except Exception:
         if bak.exists() and not p.exists():
@@ -144,14 +162,24 @@ def main() -> None:
     group.add_argument("--execute", action="store_true")
     parser.add_argument("--base", default=str(Path.home() / ".claude" / "projects"),
                         help="Base directory to scan (default: ~/.claude/projects)")
+    parser.add_argument("--no-archive", action="store_true",
+                        help="Skip moving compacted files to Google Drive archive")
     args = parser.parse_args()
 
     dry_run = args.dry_run
     base = Path(args.base).expanduser()
     now = time.time()
 
+    archive_base: Path | None = None
+    if not args.no_archive:
+        if ARCHIVE_BASE.exists():
+            archive_base = ARCHIVE_BASE
+            print(f"Archive destination: {archive_base}")
+        else:
+            print(f"WARNING: Archive path not accessible ({ARCHIVE_BASE}); running with --no-archive.", file=sys.stderr)
+
     groups = get_project_groups(base)
-    total_before = total_after = files_processed = files_skipped = 0
+    total_before = total_after = files_processed = files_skipped = files_archived = 0
 
     for project, files in sorted(groups.items()):
         files_sorted = sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
@@ -164,7 +192,7 @@ def main() -> None:
                 files_skipped += 1
                 continue
             try:
-                result = process_file(p, dry_run)
+                result = process_file(p, dry_run, archive_base, base)
             except Exception as e:
                 print(f"  ERROR {p.name}: {e}", file=sys.stderr)
                 continue
@@ -174,6 +202,8 @@ def main() -> None:
                 total_before += before
                 total_after += after
                 files_processed += 1
+                if archive_base and not dry_run:
+                    files_archived += 1
                 pct = 100 * saved / before if before else 0
                 tag = "[dry-run] " if dry_run else ""
                 print(f"  {tag}{p.parent.name}/{p.name}: {before//1024//1024}MB -> {after//1024//1024}MB ({pct:.0f}% reduction)")
@@ -182,6 +212,8 @@ def main() -> None:
     mode = "DRY RUN" if dry_run else "EXECUTED"
     print(f"\n[{mode}] {files_processed} files compacted, {files_skipped} skipped")
     print(f"  Before: {total_before/1024/1024:.1f} MB  After: {total_after/1024/1024:.1f} MB  Saved: {saved_total/1024/1024:.1f} MB")
+    if files_archived:
+        print(f"  Archived: {files_archived} files → {archive_base}")
 
 
 if __name__ == "__main__":
