@@ -33,3 +33,5 @@ uv run python compact_transcripts.py --execute         # compact + archive to Go
 - `compact_transcripts.py --execute` moves compacted files to `~/Library/CloudStorage/GoogleDrive-.../My Drive/My_Drive/Data/Claude`; Drive must be mounted or use `--no-archive`
 - uv cache can grow 50+ GB in days of heavy dev work; prune weekly with `uv cache prune`
 - `~/Downloads/<month>/.tmp.driveupload/` holds Google Drive upload temp files locked by the Drive process; quit Drive from the menu bar before deleting, or delete from Finder after quitting
+- Xcode auto-downloads simulator runtimes silently; disable with `defaults write com.apple.dt.Xcode DVTDownloadableAutomaticUpdate -bool NO` (Xcode 26 has no UI toggle — Components → Platform Support shows runtimes but no auto-download option)
+- Deleting `/Applications` items requires sudo; use Finder (right-click → Move to Trash) or run `! sudo rm -rf /Applications/<App>` in an interactive terminal — `rm -rf` without sudo returns Permission denied
