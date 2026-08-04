@@ -28,10 +28,13 @@ uv run python compact_transcripts.py --execute         # compact + archive to Go
   `xcrun simctl runtime delete <UUID>` to remove the runtime, then `xcrun simctl delete unavailable`
   to also free device data (~7 GB). Running `xcrun simctl delete unavailable` alone (without deleting
   the runtime first) only removes device instances, NOT runtime disk images — silently succeeds without freeing space.
+  Sometimes the first `delete unavailable` pass doesn't clear all now-orphaned devices immediately after a runtime
+  delete (`CoreSimulator/Devices/` stays large even though `simctl list devices` shows them "unavailable") —
+  run `delete unavailable` a second time and verify with `du -sh ~/Library/Developer/CoreSimulator/*/`.
 - `~/Documents/GitHub/` investigation: `du -sh ~/Documents/GitHub/*/` when total is large; `portfolio/data/snapshots/` accumulates ~960 MB weekly snapshots and is safe to prune
 - Transcript compaction has diminishing returns after the first run (~628 MB vs ~9 GB); skip if run recently
 - `compact_transcripts.py --execute` moves compacted files to `~/Library/CloudStorage/GoogleDrive-.../My Drive/My_Drive/Data/Claude`; Drive must be mounted or use `--no-archive`
 - uv cache can grow 50+ GB in days of heavy dev work; prune weekly with `uv cache prune`
 - `~/Downloads/<month>/.tmp.driveupload/` holds Google Drive upload temp files locked by the Drive process; quit Drive from the menu bar before deleting, or delete from Finder after quitting
-- Xcode auto-downloads simulator runtimes silently; disable with `defaults write com.apple.dt.Xcode DVTDownloadableAutomaticUpdate -bool NO` (Xcode 26 has no UI toggle — Components → Platform Support shows runtimes but no auto-download option)
+- Xcode auto-downloads simulator runtimes silently; disable with `defaults write com.apple.dt.Xcode DVTDownloadableAutomaticUpdate -bool NO` (Xcode 26 has no UI toggle — Components → Platform Support shows runtimes but no auto-download option). This only blocks background/idle auto-downloads — it does NOT stop `xcodebuild -destination 'platform=iOS Simulator,...'` from installing a runtime on demand when the targeted simulator isn't present. Runtimes will keep reappearing with any simulator-targeted build regardless of this setting; the CoreSimulator cleanup above is the durable fix, not prevention.
 - Deleting `/Applications` items requires sudo; use Finder (right-click → Move to Trash) or run `! sudo rm -rf /Applications/<App>` in an interactive terminal — `rm -rf` without sudo returns Permission denied
