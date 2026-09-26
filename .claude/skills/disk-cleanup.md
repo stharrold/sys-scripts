@@ -24,13 +24,13 @@ Present a table of targets with actual sizes from the report. Only include targe
 
 | Priority | Target | Command | Notes |
 |----------|--------|---------|-------|
-| 1 | CoreSimulator | `xcrun simctl delete unavailable` | Unused iOS simulator runtimes; can be 10–20 GB; safe |
+| 1 | CoreSimulator | `xcrun simctl delete unavailable`; unused runtimes: `xcrun simctl runtime delete <UUID>` | `delete unavailable` only removes orphaned devices. Runtimes (8 GB+ each, under /Library, not in disk_report) need `runtime delete` — confirm zero devices via `simctl list devices -j` first. Also check each device's `data/Library/Caches/com.apple.nsurlsessiond/Downloads` (retried-download junk) |
 | 2 | TM snapshots | `bash cleanup_snapshots.sh` | Required after bulk deletions to realize APFS reclaim |
 | 3 | uv cache | `uv cache prune` | Safe; wheels still hardlinked in active venvs |
 | 4 | Stale `.venv` dirs | `rm -rf <path>` | Confirm project is inactive before deleting |
 | 5 | Xcode DerivedData | `rm -rf ~/Library/Developer/Xcode/DerivedData` | Xcode rebuilds on demand |
 | 6 | Claude transcripts | `uv run python compact_transcripts.py --execute` | Run from sys-scripts dir; ~50% reduction typical |
-| 7 | Google Chrome (if large) | Chrome → Settings → Privacy → Clear Browsing Data | Check size: `du -sh ~/Library/Application\ Support/Google/Chrome`; File System API storage (per-site) is the non-obvious large entry — use Chrome UI or investigate with user approval |
+| 7 | Google Chrome (if large) | Per-origin `caches.delete()` via claude-in-chrome, or DevTools → Application → Cache storage | Size by origin: `Default/Service Worker/CacheStorage/<hash>/index.txt` names the origin. synavistra `transformers-cache` regrows ~18G/month |
 
 Ask which targets to proceed with before executing anything destructive.
 
@@ -56,6 +56,8 @@ Deletions on macOS don't appear in `df` until local TM snapshots are cleared. AP
 ```bash
 bash disk_report.sh
 ```
+
+APFS frees space asynchronously — if the reading right after `cleanup_snapshots.sh` looks low, wait a minute or two and re-run `disk_report.sh` before reporting.
 
 Report:
 - Free space before → after
