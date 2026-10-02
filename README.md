@@ -30,7 +30,9 @@ uv run python compact_transcripts.py --execute --base /path/to/projects
 ---
 
 ### `disk_report.sh`
-Quick macOS disk status: free space, local TM snapshots, and key cache sizes.
+Quick macOS disk status: free space, local TM snapshots, key cache sizes (uv, npm, pre-commit, podman VM disk,
+Chrome + DevTools MCP profile, CoreSimulator, Xcode DerivedData/DeviceSupport, DriveFS, ~/Documents/GitHub), and simulator
+runtime images. Missing paths are skipped without aborting the report.
 
 ```bash
 bash disk_report.sh

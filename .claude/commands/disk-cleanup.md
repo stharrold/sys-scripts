@@ -10,7 +10,7 @@ Note from the output:
 - **Container Free Space** — the authoritative number (not the `df` row)
 - TM snapshot count
 - Sizes of key dirs: CoreSimulator, uv cache, `.claude/projects`, Xcode/DerivedData, Documents/GitHub
-- `disk_report.sh` does NOT cover: podman VM `.raw`, `~/.npm`, `~/.cache/chrome-devtools-mcp`, `~/.cache/pre-commit`, Xcode DeviceSupport — `du -sh` them too
+- Report also covers podman VM `.raw`, `~/.npm`, pre-commit, DevTools MCP profile, DeviceSupport, Chrome, and runtime images; still check `~/Library/Caches/*` and `~/Downloads` by hand
 
 ## Step 2: Recommend targets (in priority order)
 
