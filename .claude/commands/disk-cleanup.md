@@ -10,6 +10,7 @@ Note from the output:
 - **Container Free Space** — the authoritative number (not the `df` row)
 - TM snapshot count
 - Sizes of key dirs: CoreSimulator, uv cache, `.claude/projects`, Xcode/DerivedData, Documents/GitHub
+- `disk_report.sh` does NOT cover: podman VM `.raw`, `~/.npm`, `~/.cache/chrome-devtools-mcp`, `~/.cache/pre-commit`, Xcode DeviceSupport — `du -sh` them too
 
 ## Step 2: Recommend targets (in priority order)
 
@@ -23,7 +24,10 @@ Present a table of targets with actual sizes from the report. Only include targe
 | 4 | Stale `.venv` dirs | `rm -rf <path>` | Confirm project is inactive before deleting |
 | 5 | Xcode DerivedData | `rm -rf ~/Library/Developer/Xcode/DerivedData` | Xcode rebuilds on demand |
 | 6 | Claude transcripts | `uv run python compact_transcripts.py --execute` | Run from sys-scripts dir; ~50% reduction typical |
-| 7 | Google Chrome (if large) | Per-origin `caches.delete()` via claude-in-chrome, or DevTools → Application → Cache storage | Size by origin: `Default/Service Worker/CacheStorage/<hash>/index.txt` names the origin. synavistra `transformers-cache` regrows ~18G/month |
+| 7 | Google Chrome (if large) | Per-origin `caches.delete()` via claude-in-chrome, or DevTools → Application → Cache storage | Size by origin: `Default/Service Worker/CacheStorage/<hash>/index.txt` names the origin. Also check the DevTools MCP profile `~/.cache/chrome-devtools-mcp`. synavistra's real-profile cache is one current bundle since PR #1620 — leave it |
+| 8 | Podman VM disk | `podman machine ssh -- sudo fstrim -av`; `podman image prune -a -f --filter until=720h`; fstrim again | Sparse `.raw`; fstrim alone can free 20G+. List `localhost/` project images for approval first |
+| 9 | npm | `npm cache clean --force`; `rm -rf` unused `~/.npm/_npx/<hash>` | Keep `_npx` dirs used by running processes (MCP servers) |
+| 10 | Xcode DeviceSupport | `rm -rf "~/Library/Developer/Xcode/iOS DeviceSupport/<old OS>"` | Only OS versions the device no longer runs; Xcode re-copies on connect |
 
 Ask which targets to proceed with before executing anything destructive.
 
