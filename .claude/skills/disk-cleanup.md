@@ -25,12 +25,12 @@ Present a table of targets with actual sizes from the report. Only include targe
 
 | Priority | Target | Command | Notes |
 |----------|--------|---------|-------|
-| 1 | CoreSimulator | `xcrun simctl delete unavailable`; unused runtimes: `xcrun simctl runtime delete <UUID>` | `delete unavailable` only removes orphaned devices. Runtimes (8 GB+ each, under /Library, not in disk_report) need `runtime delete` — confirm zero devices via `simctl list devices -j` first. Also check each device's `data/Library/Caches/com.apple.nsurlsessiond/Downloads` (retried-download junk) |
+| 1 | CoreSimulator | `xcrun simctl delete unavailable`; unused runtimes: `xcrun simctl runtime delete <UUID>` | `delete unavailable` only removes orphaned devices. Runtimes (8 GB+ each, under /Library; total on disk_report's "Simulator runtime images" line) need `runtime delete` — confirm zero devices via `simctl list devices -j` first. Also check each device's `data/Library/Caches/com.apple.nsurlsessiond/Downloads` (retried-download junk) |
 | 2 | TM snapshots | `bash cleanup_snapshots.sh` | Required after bulk deletions to realize APFS reclaim |
-| 3 | uv cache | `uv cache prune` | Safe; wheels still hardlinked in active venvs |
+| 3 | uv cache | Stale `environments-v2/<script>-<hash>` envs (keep newest per name), then `uv cache prune` | Per-script envs pile up one per dependency change (~20G seen). Wheels stay hardlinked in active venvs |
 | 4 | Stale `.venv` dirs | `rm -rf <path>` | Confirm project is inactive before deleting |
 | 5 | Xcode DerivedData | `rm -rf ~/Library/Developer/Xcode/DerivedData` | Xcode rebuilds on demand |
-| 6 | Claude transcripts | `uv run python compact_transcripts.py --execute` | Run from sys-scripts dir; ~50% reduction typical |
+| 6 | Claude transcripts | `uv run python compact_transcripts.py --execute` | Run from sys-scripts dir; ~50% reduction typical. Archive frees local space only as Drive uploads; keep Drive running |
 | 7 | Google Chrome (if large) | Per-origin `caches.delete()` via claude-in-chrome, or DevTools → Application → Cache storage | Size by origin: `Default/Service Worker/CacheStorage/<hash>/index.txt` names the origin. Also check the DevTools MCP profile `~/.cache/chrome-devtools-mcp`. synavistra's real-profile cache is one current bundle since PR #1620 — leave it |
 | 8 | Podman VM disk | `podman machine ssh -- sudo fstrim -av`; `podman image prune -a -f --filter until=720h`; fstrim again | Sparse `.raw`; fstrim alone can free 20G+. List `localhost/` project images for approval first |
 | 9 | npm | `npm cache clean --force`; `rm -rf` unused `~/.npm/_npx/<hash>` | Keep `_npx` dirs used by running processes (MCP servers) |
