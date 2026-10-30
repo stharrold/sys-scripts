@@ -129,8 +129,15 @@ def safe(name: str) -> str:
 
 
 def git(repo: str, *args: str) -> list[str]:
-    """Git argv with the repo's own hooks and fsmonitor disabled, since repo config can run commands."""
-    return ["git", "--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-C", repo, *args]
+    """Git argv with repo-configured commands disabled where git allows it. Filters can't be; see has_custom_filter."""
+    overrides = ["core.fsmonitor=false", "core.hooksPath=/dev/null", "log.showSignature=false"]
+    return ["env", "GIT_NO_LAZY_FETCH=1", "git", "--no-optional-locks", *[x for o in overrides for x in ("-c", o)], "-C", repo, *args]
+
+
+def has_custom_filter(repo: str) -> bool:
+    """True if repo config defines a filter other than LFS. `git status` could run it, so status must be skipped."""
+    keys = run(*git(repo, "config", "--local", "--name-only", "--get-regexp", r"^filter\.")).splitlines()
+    return any(not k.lower().startswith("filter.lfs.") for k in keys)
 
 
 def run(*cmd: str) -> str:
@@ -150,10 +157,12 @@ def git_facts(path: str, cache: dict) -> dict | None:
     if not (Path(repo) / ".git").exists():
         return None
     if repo not in cache:
+        filtered = has_custom_filter(repo)
         cache[repo] = {
             "repo": repo,
+            "filtered": filtered,
             "remote": bool(run(*git(repo, "remote"))),
-            "dirty": len(run(*git(repo, "status", "--porcelain", "--ignore-submodules")).splitlines()),
+            "dirty": 0 if filtered else len(run(*git(repo, "status", "--porcelain", "--ignore-submodules")).splitlines()),
             "unpushed": len(run(*git(repo, "log", "--oneline", "--branches", "--not", "--remotes")).splitlines()),
             "worktree": (Path(repo) / ".git").is_file(),
         }
@@ -179,6 +188,8 @@ def classify(path: str, node: dict, opened: set[str], cache: dict, notes: dict) 
         return ("stale", f"Application last used {days:.0f} days ago") if days >= STALE_DAYS else ("keep", f"Application used {days:.0f} days ago")
     facts = git_facts(path, cache)
     if facts:
+        if facts["filtered"]:
+            return "unknown", "Repo config defines a custom git filter, so git status was not run"
         kind = "worktree" if facts["worktree"] else "repo"
         state = f"{facts['dirty']} uncommitted, {facts['unpushed']} unpushed, remote {'yes' if facts['remote'] else 'NO'}"
         if facts["ignored"]:
@@ -212,7 +223,7 @@ def build(nodes: list[dict], min_bytes: int, opened: set[str]) -> tuple[dict, li
             return n
         n["children"] = [visit(k) for k in kids]
         rest = n["size"] - sum(k["size"] for k in kids)
-        top = ", ".join(f"{safe(k['display'].rsplit('/', 1)[1])} {k['size'] / GIB:.1f}G" for k in kids[:3])
+        top = ", ".join(f"`{safe(k['display'].rsplit('/', 1)[1])}` {k['size'] / GIB:.1f}G" for k in kids[:3])
         n["verdict"] = "mixed"
         n["why"] = f"Mostly {top}" + (f"; other items {rest / GIB:.1f}G" if rest >= GIB else "")
         n["rest"] = rest
