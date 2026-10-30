@@ -50,6 +50,19 @@ bash cleanup_snapshots.sh
 
 ---
 
+### `disk_map.py`
+Read-only map of what is using space. `scan` exports the Data volume with `ncdu` (compressed) to
+`~/.local/share/disk-scans/`, outside this repo because scans list file and folder names. `report` builds a
+tree of directories of 1 GB or more, with a verdict (keep, regenerable, stale, unknown) and evidence for each
+entry. It never deletes anything. Requires `ncdu` and `zstd`.
+
+```bash
+uv run python disk_map.py scan
+uv run python disk_map.py report --min-gib 1
+```
+
+---
+
 ### `eject_disk_images.sh`
 Force-detach attached disk images (stale `.dmg` mounts, leftover iOS Simulator
 runtime/volume images) with `hdiutil detach -force`. SIP-protected system
