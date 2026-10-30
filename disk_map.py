@@ -29,6 +29,12 @@ ROOT = "/System/Volumes/Data"
 KEEP_BYTES = 100 * 2**20  # Directories kept from the export; the tree threshold is higher.
 GIB = 2**30
 STALE_DAYS = 180
+LFS_FILTER = {
+    "filter.lfs.clean": "git-lfs clean -- %f",
+    "filter.lfs.smudge": "git-lfs smudge -- %f",
+    "filter.lfs.process": "git-lfs filter-process",
+    "filter.lfs.required": "true",
+}
 NOW = time.time()
 NOTES = SCAN_DIR / "notes.json"  # Private {path: [verdict, reason]} from manual review; beats the rules.
 
@@ -129,15 +135,22 @@ def safe(name: str) -> str:
 
 
 def git(repo: str, *args: str) -> list[str]:
-    """Git argv with repo-configured commands disabled where git allows it. Filters can't be; see has_custom_filter."""
+    """Git argv with repo-configured commands disabled where git allows it. Filters can't be; see has_untrusted_filter."""
     overrides = ["core.fsmonitor=false", "core.hooksPath=/dev/null", "log.showSignature=false"]
     return ["env", "GIT_NO_LAZY_FETCH=1", "git", "--no-optional-locks", *[x for o in overrides for x in ("-c", o)], "-C", repo, *args]
 
 
-def has_custom_filter(repo: str) -> bool:
-    """True if repo config defines a filter other than LFS. `git status` could run it, so status must be skipped."""
-    keys = run(*git(repo, "config", "--local", "--name-only", "--get-regexp", r"^filter\.")).splitlines()
-    return any(not k.lower().startswith("filter.lfs.") for k in keys)
+def has_untrusted_filter(repo: str) -> bool:
+    """True unless every effective filter is stock git-lfs. `git status` can run filters. Errors count as True."""
+    try:
+        proc = subprocess.run(git(repo, "config", "--includes", "--get-regexp", r"^filter\."), capture_output=True, text=True, timeout=120, errors="surrogateescape")
+    except subprocess.TimeoutExpired:
+        return True
+    if proc.returncode == 1:  # No filter keys at all.
+        return False
+    if proc.returncode != 0:
+        return True
+    return any(LFS_FILTER.get(key) != value for key, _, value in (line.partition(" ") for line in proc.stdout.splitlines()))
 
 
 def run(*cmd: str) -> str:
@@ -157,7 +170,7 @@ def git_facts(path: str, cache: dict) -> dict | None:
     if not (Path(repo) / ".git").exists():
         return None
     if repo not in cache:
-        filtered = has_custom_filter(repo)
+        filtered = has_untrusted_filter(repo)
         cache[repo] = {
             "repo": repo,
             "filtered": filtered,
@@ -189,7 +202,7 @@ def classify(path: str, node: dict, opened: set[str], cache: dict, notes: dict) 
     facts = git_facts(path, cache)
     if facts:
         if facts["filtered"]:
-            return "unknown", "Repo config defines a custom git filter, so git status was not run"
+            return "unknown", "Git config has a filter other than stock git-lfs, so git status was not run"
         kind = "worktree" if facts["worktree"] else "repo"
         state = f"{facts['dirty']} uncommitted, {facts['unpushed']} unpushed, remote {'yes' if facts['remote'] else 'NO'}"
         if facts["ignored"]:
